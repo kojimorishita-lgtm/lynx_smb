@@ -69,7 +69,7 @@ endif
 # ----------------------------------------------------------------------------
 
 # Tile mode: 5x5 (default, uniform scaling) or 5x4 (more vertical content)
-TILE_MODE ?= 5x5
+TILE_MODE ?= 5x4
 
 ifeq ($(TILE_MODE),5x5)
   TILE_W = 5
