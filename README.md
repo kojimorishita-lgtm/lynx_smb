@@ -1,158 +1,155 @@
-# Super Mario Bros. — Atari Lynx Port
+# スーパーマリオブラザーズ — Atari Lynx 移植版
 
-A port of the NES *Super Mario Bros.* to the **Atari Lynx** handheld.
+NES版『スーパーマリオブラザーズ』を **Atari Lynx** 携帯ゲーム機に移植したプロジェクトです。
 
-Rather than rewriting the game, this project runs the original 6502 game logic
-(from a complete NES disassembly) on the Lynx's 65C02 and wraps every NES
-hardware access — graphics, audio, input — in a thin **Lynx adapter layer**. The
-NES's tile-based PPU is translated to the Lynx's sprite-based *Suzy* engine, the
-NES APU to the Lynx *Mikey* audio channels, and the NES controller to the Lynx
-joypad.
+ゲームを一から書き直すのではなく、NES版の完全な逆アセンブルデータから得られたオリジナルの6502ゲームロジックを、Lynxの65C02上で動作させています。そして、グラフィックス、音声、入力などのNESハードウェアへのアクセスを、薄い **Lynxアダプター層** で置き換えています。
 
-All artwork and level data is extracted directly from the original NES ROM
-during the build. No copyrighted assets are stored in this repository.
+NESのタイルベースのPPUは、Lynxのスプライトベースの *Suzy* エンジンに変換されます。NESのAPUはLynxの *Mikey* の音声チャンネルに、NESコントローラーはLynxのジョイパッドに対応させています。
 
-![Super Mario Bros. running on the Atari Lynx](docs/screenshot.png)
+すべてのグラフィック素材とステージデータは、ビルド時にオリジナルのNES ROMから直接抽出されます。このリポジトリには、著作権で保護された素材は保存されていません。
+
+![Atari Lynxで動作するスーパーマリオブラザーズ](docs/screenshot.png)
 
 ---
 
-## How it works
+## 仕組み
 
-| NES | Lynx | Translation |
-|-----|------|-------------|
-| Tile-based PPU, 256×240 | Sprite-based Suzy engine, 160×102 @ 4bpp | Tiles → pre-composited metatile sprites, NES→Lynx palette dedup into ≤16 slots |
-| APU, 5 channels | Mikey, 4 channels | Per-frame register translation, software envelope emulation |
-| Controller | Joypad + buttons | Input shim |
-| 2 KB RAM + separate VRAM | 64 KB unified RAM | NES I/O register equates redirected into RAM |
+| NES | Lynx | 変換方法 |
+|-----|------|----------|
+| タイルベースのPPU、256×240 | スプライトベースのSuzyエンジン、160×102 @ 4bpp | タイルを事前合成されたメタタイルスプライトに変換。NESからLynxへのパレット変換時に色を重複排除し、16スロット以下にまとめる |
+| APU、5チャンネル | Mikey、4チャンネル | フレームごとにレジスタを変換し、ソフトウェアでエンベロープをエミュレーション |
+| コントローラー | ジョイパッド＋ボタン | 入力変換レイヤー |
+| 2 KBのRAM＋独立したVRAM | 64 KBの統合RAM | NESのI/Oレジスタ定義をRAM内のアドレスに振り替える |
 
-* `lynx_port/smb_lynx.s` — the NES disassembly converted to `ca65` syntax (~16K lines).
-* `lynx_port/lynx_startup.s` — Lynx hardware init and the IRQ→NMI bridge that
-  drives the original game loop.
-* `lynx_port/lynx_sprites.s` — Suzy sprite rendering and NES→Lynx palette translation.
-* `lynx_port/lynx_audio.s` — NES APU → Mikey audio translation.
+- `lynx_port/smb_lynx.s` — NESの逆アセンブルデータを`ca65`構文に変換したもの（約16,000行）。
+- `lynx_port/lynx_startup.s` — Lynxのハードウェア初期化と、IRQからNMIへのブリッジ。これがオリジナルのゲームループを駆動します。
+- `lynx_port/lynx_sprites.s` — Suzyによるスプライト描画と、NESからLynxへのパレット変換。
+- `lynx_port/lynx_audio.s` — NESのAPUからMikeyへの音声変換。
 
-The graphics scale factor is NES 8×8 → Lynx 5×5 (160×102 fits a 32-column field
-exactly).
+グラフィックスの縮小率は、NESの8×8ピクセルからLynxの5×5ピクセルです（160×102の画面に32列のフィールドがちょうど収まります）。
 
 ---
 
-## Prerequisites
+## 必要なもの
 
-* **[cc65](https://cc65.github.io/)** — provides `ca65`, `ld65`, and `sp65`,
-  plus the Lynx target library (`lynx.lib`). 
-  Don't use you package manager, compile from source:
+- **[cc65](https://cc65.github.io/)** — `ca65`、`ld65`、`sp65`と、Lynx用ターゲットライブラリ（`lynx.lib`）を提供します。
+
+  パッケージマネージャーは使用せず、ソースからコンパイルしてください。
+
   ```bash
   git clone https://github.com/cc65/cc65.git
-  # The exact commit this port is tested against (see Dockerfile CC65_COMMIT):
+
+  # この移植版の動作確認に使用した正確なコミット
+  # （DockerfileのCC65_COMMITを参照）
   cd cc65 && git checkout c720c3c4854cf36befbb7d1b19fdb207f7549882
+
   make -j"$(nproc)" && sudo make install PREFIX=/usr/local
   ```
-* **Python 3** with **[Pillow](https://pypi.org/project/Pillow/)** — the only
-  third-party Python dependency, used by the asset-extraction scripts. Install
-  it with `pip install -r requirements.txt`.
-* **make** and **bash**.
-* An Atari Lynx emulator to run the result (e.g.
-  [GearLynx](https://github.com/drhelius/Gearlynx),
-  [Felix](https://github.com/laoo/Felix), or
-  [Handy](https://atarilynxdeveloper.wordpress.com/)).
 
-Make sure `ca65`, `ld65`, and `sp65` are on your `PATH`. If cc65 is installed
-somewhere non-standard, override the tool paths:
+- **Python 3** と **[Pillow](https://pypi.org/project/Pillow/)** — アセット抽出スクリプトで使用する唯一のサードパーティ製Python依存ライブラリです。`pip install -r requirements.txt`でインストールしてください。
+- **make** と **bash**。
+- ビルド結果を実行するためのAtari Lynxエミュレーター（例：[GearLynx](https://github.com/drhelius/Gearlynx)、[Felix](https://github.com/laoo/Felix)、または[Handy](https://atarilynxdeveloper.wordpress.com/)）。
+
+`ca65`、`ld65`、`sp65`が`PATH`に含まれていることを確認してください。cc65を標準以外の場所にインストールした場合は、ツールのパスを指定して上書きできます。
 
 ```bash
 make CA65=/opt/cc65/bin/ca65 LD65=/opt/cc65/bin/ld65 SP65=/opt/cc65/bin/sp65
 ```
 
-
----
-## Docker Building (easy)
-
-  ```bash
-  git clone https://github.com/pwsqrd/lynx_smb
-  cd lynx_smb
-
-  # Drop your ROM in rom/ (any filename, matched by checksum)
-  cp /path/to/your/smb.nes rom/
-
-  # Build the image (one-time, ~5 min — compiles cc65 from source)
-  docker build -t lynx_smb_builder .
-
-  # Run the build, get the .lnx out
-  docker run --rm \
-    -v "$PWD/rom:/build/rom" \
-    -v "$PWD/out:/build/out" \
-    lynx_smb_builder
-  ```
-
-
 ---
 
-## Build (if you dont like docker)
+## Dockerでのビルド（簡単な方法）
 
-1. **Supply the NES ROM.** This port does not include any game assets — drop
-   your own legally-obtained *Super Mario Bros.* ROM into the `rom/` directory.
-   Any filename works; it is matched by checksum. The required dump is:
+```bash
+git clone https://github.com/pwsqrd/lynx_smb
+cd lynx_smb
 
-   | Field | Value |
+# ROMをrom/に配置（ファイル名は任意。チェックサムで判定されます）
+cp /path/to/your/smb.nes rom/
+
+# イメージをビルド（一度だけ実行。約5分かかります）
+# cc65をソースからコンパイルします
+docker build -t lynx_smb_builder .
+
+# ビルドを実行し、.lnxファイルを取得します
+docker run --rm \
+  -v "$PWD/rom:/build/rom" \
+  -v "$PWD/out:/build/out" \
+  lynx_smb_builder
+```
+
+---
+
+## ビルド（Dockerを使わない場合）
+
+1. **NES ROMを用意する。**
+
+   この移植版にはゲームの素材は含まれていません。自分で合法的に入手した『スーパーマリオブラザーズ』のROMを`rom/`ディレクトリに配置してください。
+
+   ファイル名は任意です。チェックサムによって判定されます。必要なROMダンプは以下のとおりです。
+
+   | 項目 | 値 |
    |-------|-------|
-   | Name  | `Super Mario Bros (JU) (PRG 0).nes` |
-   | Size  | 40976 bytes |
-   | MD5   | `811b027eaf99c2def7b933c5208636de` |
+   | 名前 | `Super Mario Bros (JU) (PRG 0).nes` |
+   | サイズ | 40976 bytes |
+   | MD5 | `811b027eaf99c2def7b933c5208636de` |
    | SHA-1 | `ea343f4e445a9050d4b4fbac2c77d0693b1d0922` |
 
-   (If the ROM is missing or wrong, the build stops and prints exactly what it
-   expects.)
+   ROMが見つからない場合、またはROMが正しくない場合は、ビルドが停止し、必要なROMの情報が正確に表示されます。
 
-2. **Build:**
+2. **ビルドする。**
 
    ```bash
    make
    ```
 
-   This verifies the ROM, extracts and converts all assets, assembles the four
-   modules, and links the final ROM to **`out/smb.lnx`** (plus `.lab`/`.sym`
-   debugger symbol files).
+   このコマンドはROMを検証し、すべての素材を抽出・変換して、4つのモジュールをアセンブルします。その後、最終ROMを`out/smb.lnx`にリンクします。
 
-   The default tile size is **5×5** (NES 8×8 tiles downscaled to fit the Lynx's
-   160×102 screen). This is the standard build and produces `out/smb.lnx`. The
-   alternate `TILE_MODE=5x4` build (see below) is written to `out/smb_5x4.lnx`
-   instead. 5x4 mode allows for more vertical space and matches the NES version more closely.
+   さらに、デバッガー用のシンボルファイル（`.lab`／`.sym`）も生成されます。
 
-3. **Run** it in an emulator:
+   デフォルトのタイルサイズは **5×5** です（NESの8×8タイルを、Lynxの160×102画面に収まるよう縮小します）。
+
+   これは標準ビルドであり、`out/smb.lnx`を生成します。
+
+   別の`TILE_MODE=5x4`ビルドについては、後述のとおり`out/smb_5x4.lnx`に出力されます。5×4モードでは、より多くの縦方向の画面領域を確保でき、NES版に近い表示になります。
+
+3. **エミュレーターで実行する。**
 
    ```bash
    make run FELIX=/path/to/your/emulator
-   # or just point your emulator at out/smb.lnx
+
+   # または、エミュレーターで直接out/smb.lnxを開きます
    ```
 
-### Useful make targets / options
+### 便利なmakeターゲット／オプション
 
-| Command | Description |
+| コマンド | 説明 |
 |---------|-------------|
-| `make` | Verify ROM, build assets + ROM image |
-| `make assets` | Build only the extracted assets |
-| `make run` | Build then launch the emulator (`FELIX=` to set it) |
-| `make clean` | Remove object files and the linked ROM |
-| `make distclean` | Also remove all extracted/generated assets |
-| `make TILE_MODE=5x4` | Alternate tile scaling (more vertical content, smaller tiles, more draw calls) → `out/smb_5x4.lnx` |
-| `make VSCROLL_MODE=THREE_POS` | Choose a vertical-scroll behaviour, 5×5 only (see below) |
+| `make` | ROMを検証し、素材とROMイメージをビルド |
+| `make assets` | 抽出した素材のみをビルド |
+| `make run` | ビルド後にエミュレーターを起動（`FELIX=`でエミュレーターを指定） |
+| `make clean` | オブジェクトファイルとリンク済みROMを削除 |
+| `make distclean` | 抽出・生成されたすべての素材も削除 |
+| `make TILE_MODE=5x4` | 別のタイル縮尺を使用（画面内に表示できる縦方向の領域が増える。タイルは小さくなり、描画呼び出し回数は増加）→ `out/smb_5x4.lnx` |
+| `make VSCROLL_MODE=THREE_POS` | 垂直スクロール方式を選択。5×5モードのみ対応（後述） |
 
-### Vertical scroll modes (5×5 only)
+### 垂直スクロールモード（5×5のみ）
 
-The Lynx screen (102 px tall) is far shorter than the NES's (240 px), so the
-5×5 build scrolls the camera vertically to keep Mario in frame. *How* it scrolls
-is chosen at build time with `VSCROLL_MODE=`. Three behaviours are available:
+Lynxの画面（高さ102ピクセル）はNESの画面（高さ240ピクセル）よりもかなり小さいため、5×5ビルドではマリオが画面内に収まるように、カメラを垂直方向にスクロールさせます。
 
-| `VSCROLL_MODE` | Behaviour |
-|----------------|-----------|
-| *(unset)* or `PLATFORM_LOCK` | **Default.** Platform-lock: the camera follows Mario *down* immediately, but only pans *up* after he has stood still briefly (~0.13 s). Keeps the framing steady and stops the view lurching upward on every jump. Snaps between ground / mid / top positions. |
-| `TWO_POS` | Two-position snap between a ground camera and a raised camera, with a dead zone and velocity gating to prevent oscillation. Snappier and simpler. |
-| `THREE_POS` | Three-position snap (ground / mid / top) with dead zones — finer vertical framing than `TWO_POS`. |
+スクロール方式は、ビルド時に`VSCROLL_MODE=`で選択します。以下の3つの動作があります。
 
-In every mode the camera eases toward its target (±2 px/frame) and holds still
-during pipe transitions, level entry, and death; water levels never scroll
-vertically. The alternate 5×4 build fits more rows on screen and does not scroll
-vertically, so `VSCROLL_MODE` has no effect there.
+| `VSCROLL_MODE` | 動作 |
+|----------------|------|
+| （未設定）または`PLATFORM_LOCK` | **デフォルト。** プラットフォーム固定方式。カメラはマリオが下に移動するとすぐに追従しますが、上方向への移動はマリオが短時間（約0.13秒）静止してから行われます。画面の構図を安定させ、ジャンプのたびに視点が上に急激に移動するのを防ぎます。地面・中間・上部の位置を切り替えます。 |
+| `TWO_POS` | 地面位置と上昇位置の2つのカメラ位置を切り替えます。デッドゾーンと速度判定を使用し、スクロールの振動を防ぎます。より素早く、シンプルな方式です。 |
+| `THREE_POS` | 地面・中間・上部の3つの位置を切り替えます。デッドゾーンを設けており、`TWO_POS`より細かく垂直方向の構図を調整できます。 |
+
+どの方式でも、カメラは目標位置に向かって徐々に移動します（1フレームあたり±2ピクセル）。
+
+土管の移動、ステージへの入場、死亡中はカメラを固定します。また、水中ステージでは垂直スクロールしません。
+
+別の5×4ビルドでは、より多くの行を画面内に表示でき、垂直スクロールは行いません。そのため、5×4モードでは`VSCROLL_MODE`は影響しません。
 
 ```bash
 make VSCROLL_MODE=THREE_POS
@@ -160,32 +157,28 @@ make VSCROLL_MODE=THREE_POS
 
 ---
 
-## Repository layout
+## リポジトリの構成
 
-```
-lynx_port/        Port source (ca65 assembly) + linker config + hardware include
-tools/            ROM verification + asset-extraction pipeline (Python / sp65)
-rom/              Place your NES ROM here (gitignored)
-docs/             Screenshot and other docs
-Makefile          Build orchestration
+```text
+lynx_port/        移植版のソース（ca65アセンブリ）、リンカー設定、ハードウェア用インクルードファイル
+tools/             ROM検証と素材抽出パイプライン（Python / sp65）
+rom/               NES ROMを配置するディレクトリ（gitignore対象）
+docs/              スクリーンショットなどのドキュメント
+Makefile           ビルド処理の管理
 ```
 
-The `build/` and `out/` directories are created during the build and are
-gitignored.
+`build/`と`out/`ディレクトリはビルド時に作成され、gitignoreの対象です。
 
 ---
 
-## Credits & provenance
+## クレジットと出典
 
-* **Game:** *Super Mario Bros.* © Nintendo. This project ships **no** Nintendo
-  assets or code; everything is generated from a ROM you provide.
-* **NES disassembly:** the game logic is derived from the comprehensive
-  *Super Mario Bros.* disassembly **`SMBDIS.ASM` by doppelganger**
-  (doppelheathen@gmail.com), converted from x816 to `ca65` syntax. That original
-  disassembly is not included in this repository; it is widely mirrored online
-  (search for "SMBDIS.ASM doppelganger" / the smbdisassembly project).
-* **Toolchain:** [cc65](https://cc65.github.io/) (ca65/ld65/sp65 and the Lynx
-  target library).
+- **ゲーム：** 『スーパーマリオブラザーズ』© Nintendo。本プロジェクトには任天堂の素材やコードは一切含まれていません。すべて、ユーザーが用意したROMから生成されます。
 
-This is a hobby/educational port. You must own an original copy of the game to
-build and play it.
+- **NESの逆アセンブルデータ：** ゲームロジックは、doppelganger（doppelheathen@gmail.com）による包括的な『スーパーマリオブラザーズ』の逆アセンブルデータ **`SMBDIS.ASM`** を基にしています。x816構文から`ca65`構文に変換されています。
+
+  元の逆アセンブルデータはこのリポジトリには含まれていません。オンライン上で広くミラーされているため、「SMBDIS.ASM doppelganger」または「smbdisassembly project」で検索してください。
+
+- **ツールチェーン：** [cc65](https://cc65.github.io/)（ca65／ld65／sp65とLynx用ターゲットライブラリ）。
+
+これは趣味・教育目的の移植プロジェクトです。ビルドしてプレイするには、ゲームのオリジナル版を所有している必要があります。
