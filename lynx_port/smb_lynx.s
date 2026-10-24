@@ -2871,12 +2871,12 @@ PlayerLoseLife:
              stz Sprite0HitDetectFlag ;disable MoveSpritesOffscreen
              lda #Silence             ;silence music
              sta EventMusicQueue
-.ifdef CHEAT_INFINITE_LIVES
-             bra StillInGame          ;infinite lives cheat - skip death
-.else
+;.ifdef CHEAT_INFINITE_LIVES
+;             bra StillInGame          ;infinite lives cheat - skip death
+;.else
              dec NumberofLives        ;take one life from player
              bpl StillInGame          ;if player still has lives, branch
-.endif
+;.endif
              stz OperMode_Task        ;initialize mode task,
              lda #GameOverModeValue   ;switch to game over mode
              sta OperMode             ;and leave
